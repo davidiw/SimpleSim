@@ -8,7 +8,6 @@
  */
 
 #include "greedy.h"
-#include "sim_helper.h"
 
 struct vertex *greedy_route(struct message *msg, struct edge *table)
 {

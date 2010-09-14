@@ -9,7 +9,7 @@
 
 #ifndef MESSAGE_H
 #define MESSAGE_H
-#include "sim_helper.h"
+#include "graph.h"
 
 struct message {
   v_space_t src;

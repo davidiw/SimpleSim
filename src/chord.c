@@ -10,7 +10,6 @@
 #include <limits.h>
 #include <stdlib.h>
 #include "chord.h"
-#include "sim_helper.h"
 
 void chord_init(struct sorted_list *network)
 {

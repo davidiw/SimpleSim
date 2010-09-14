@@ -11,6 +11,6 @@
 #define SYMPHONY_H
 #include "graph.h"
 
-void symphony_init(struct vertex **network, int near_edges);
+void symphony_init(struct sorted_list *network);
 void symphony_add_vertex(struct vertex **network, struct vertex *vertex);
 #endif

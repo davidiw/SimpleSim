@@ -9,8 +9,15 @@
 
 #ifndef GRAPH_H
 #define GRAPH_H
-#include "sim_helper.h"
+#include <limits.h>
 #include "sorted_list.h"
+
+/** Place all node identifiers in the unsigned integers space.
+ * There's no need to support more than 4 billion nodes and this can contain a
+ * reasonable uniform distribution for at least 10 to if not millions of nodes.
+ */
+typedef unsigned int v_space_t;
+#define V_SPACE_T_MAX UINT_MAX
 
 /** Represents a connection to a remote vertex. */
 struct edge {
@@ -51,6 +58,9 @@ int vertex_compare(struct vertex *v0, struct vertex *v1);
 int vertex_compare_by_identifier(struct vertex *v, v_space_t *id);
 void vertex_free(struct vertex *v);
 struct sorted_list *network_init(int network_size);
-inline int circle_right_idx(v_space_t network_size, v_space_t idx, v_space_t count);
-inline int circle_left_idx(v_space_t network_size, v_space_t idx, v_space_t count);
+
+inline v_space_t circle_right_idx(v_space_t network_size, v_space_t idx, v_space_t count);
+inline v_space_t circle_left_idx(v_space_t network_size, v_space_t idx, v_space_t count);
+v_space_t v_space_abs_dist(v_space_t v0, v_space_t v1);
+int v_space_compare(v_space_t v0, v_space_t v1);
 #endif

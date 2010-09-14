@@ -1,14 +1,14 @@
 CC = gcc
 DEBUG =
 CFLAGS = -c $(DEBUG)
-LFLAGS = $(DEBUG)
+LFLAGS = -lm $(DEBUG)
 BUILD_DIR = build
-LIB_OBJS = build/sim_helper.o build/graph.o build/chord.o build/greedy.o \
-					 build/sorted_list.o build/safe.o
+LIB_OBJS = build/graph.o build/chord.o build/greedy.o \
+					 build/sorted_list.o build/safe.o build/symphony.o
 BUILD_OBJS = $(LIB_OBJS) build/sim.o
 TEST_OBJS = $(LIB_OBJS) build/cutest.o build/tests.o build/sorted_list_test.o
 
-build/sim:
+build/sim: $(BUILD_OBJS)
 	$(CC) $(LFLAGS) $(BUILD_OBJS) -o build/sim
 
 run: build/sim
@@ -22,8 +22,6 @@ clean:
 
 # Binaries
 
-build/sim:
-
 build/test: $(TEST_OBJS)
 	$(CC) $(LFLAGS) $(TEST_OBJS) -o build/test
  
@@ -32,20 +30,20 @@ build/test: $(TEST_OBJS)
 build/graph.o: src/graph.c src/graph.h src/safe.h src/sorted_list.h
 	$(CC) $(CFLAGS) src/graph.c -o build/graph.o
 
-build/greedy.o: src/greedy.c src/greedy.h src/message.h src/sim_helper.h
+build/greedy.o: src/greedy.c src/greedy.h src/message.h
 	$(CC) $(CFLAGS) src/greedy.c -o build/greedy.o
 
 build/safe.o: src/safe.c src/safe.h
 	$(CC) $(CFLAGS) src/safe.c -o build/safe.o
 
-build/chord.o: src/chord.c src/chord.h src/graph.h src/sim_helper.h
+build/chord.o: src/chord.c src/chord.h src/graph.h
 	$(CC) $(CFLAGS) src/chord.c -o build/chord.o
 
-build/sim.o: src/sim.c src/graph.h src/safe.h src/sim_helper.h
-	$(CC) $(CFLAGS) src/sim.c -o build/sim.o
+build/symphony.o: src/symphony.c src/symphony.h src/graph.h
+	$(CC) $(CFLAGS) src/symphony.c -o build/symphony.o
 
-build/sim_helper.o: src/sim_helper.c src/sim_helper.h
-	$(CC) $(CFLAGS) src/sim_helper.c -o build/sim_helper.o
+build/sim.o: src/sim.c src/graph.h src/safe.h
+	$(CC) $(CFLAGS) src/sim.c -o build/sim.o
 
 build/sorted_list.o: src/sorted_list.c src/sorted_list.h src/safe.h
 	$(CC) $(CFLAGS) src/sorted_list.c -o build/sorted_list.o
