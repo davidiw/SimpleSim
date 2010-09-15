@@ -3,10 +3,9 @@ Introduction
 I had trouble finding a P2P simulator / graphing utility that was efficient and
 could be compiled on modern C; furthermore, my C skills have never really been
 tested.  This led to my development of simplesim, a multipurpose overlay simulator
-that can easily scale to millions of nodes and potentially 10s of millions
-given the right resources.  Perhaps, I'll make it capable of running on
-multiple machines so that memory is not a consideration.  As it stands now, I
-suspect the upper bound will be somewhere around 10 million on a 4 GB machine.
+that can easily scale to millions of nodes given the right resources.  Perhaps,
+I'll make it capable of running on multiple machines so that memory is not a
+consideration.
 
 Requirements
 =============
@@ -14,17 +13,17 @@ Some unix variant with gcc and make
 
 Compile
 ========
-"mkdir build" and then execute "make" in the root directory
+execute "make" in the root directory
 
 Run
 ====
-cd build && ./sim
+make && ./sim
 or
-Execute "make run" in the root directory
+make run
+check ./sim --help for input parameters
 
 Tests
 ======
-"mkdir build" and then execute "make test" in the root directory
-
-
-Obviously my make-fu needs to improve...
+make test && ./test
+or
+make run_test
