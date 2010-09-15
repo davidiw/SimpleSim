@@ -8,130 +8,208 @@
  */
 
 #include "graph.h"
-#include "safe.h"
 
-void vertex_free_void(void *v);
-int vertex_compare_void(void *v0, void *v1);
-int vertex_compare_by_identifier_void(void *v, void *id);
-
-struct sorted_list *network_init(int network_size)
+GSequence *network_init()
 {
-  return sorted_list_init(network_size, sizeof(struct vertex *), 
-      (int (*)(void *, void *)) vertex_compare,
-      (int (*)(void *, void *)) vertex_compare_by_identifier,
-      (void (*)(void *)) vertex_free);
+  return g_sequence_new((void (*)(gpointer)) vertex_free);
 }
 
-struct vertex *vertex_init(struct sorted_list *network, v_space_t id)
+void network_free(GSequence *network)
 {
-  struct vertex *v = (struct vertex *) Malloc(sizeof (struct vertex));
+  g_sequence_free(network);
+}
+
+int network_add_vertex(GSequence *network, vertex *v)
+{
+  vertex *nv = vertex_nearest(network, v->id);
+  if(nv != NULL && v->id == nv->id) {
+    return -1;
+  }
+  g_sequence_insert_sorted(network, v,
+      (int (*)(gconstpointer, gconstpointer, gpointer)) vertex_compare,
+      NULL);
+}
+
+/**
+ */
+vertex *vertex_init(v_space_t id)
+{
+  vertex *v = g_slice_alloc0(sizeof(vertex));
   v->id = id;
-
-  struct edge *e = Malloc(sizeof(struct edge));
-  e->remote = v;
-  e->next = e;
-
-  v->table = e;
-  v->end_of_table = e;
-
-  sorted_list_add_element(network, v);
+  v->table = g_sequence_new((void (*)(gpointer)) edge_free);
+  vertex_add_edge(v, v);
   return v;
 }
 
-void vertex_free(struct vertex *v)
+/**
+ */
+void vertex_free(vertex *v)
 {
-  if(v == NULL) {
-    perror("Vertex already freed!");
-    return;
-  }
-
   if(v->table == NULL) {
     perror("Vertex table already freed!");
   } else {
-    struct edge *current = v->table;
-    struct edge *next = current->next;
-
-    do {
-      free(current);
-      current = next;
-      next = current->next;
-    } while(next != v->table);
+    g_sequence_free(v->table);
   }
-
-  free(v);
+  g_slice_free1(sizeof(vertex), v);
 }
 
-struct edge *vertex_add_edge(struct vertex *local, struct vertex *remote)
+/**
+ */
+edge *vertex_add_edge(vertex *local, vertex *remote)
 {
-  struct edge *e = (struct edge *) Malloc(sizeof(struct edge));
-  e->remote = remote;
+  GSequenceIter *iter = g_sequence_search(local->table, NULL,
+      (int (*)(gconstpointer, gconstpointer, gpointer)) edge_compare,
+      &(remote->id));
 
-  struct edge *ce = local->table;
-  struct edge *last = ce;
-
-  while(ce != local->end_of_table) {
-    if(v_space_compare(remote->id, ce->remote->id) <= 0) {
-      break;
+  if(g_sequence_iter_is_begin(iter) == FALSE) {
+    edge *e = g_sequence_get(g_sequence_iter_prev(iter));
+    if(e->remote == remote) {
+      return NULL;
     }
-
-    last = ce;
-    ce = ce->next;
   }
 
-  if(ce->next->remote == remote || ce->remote == remote) {
-    return NULL;
-  }
-
-  if(ce == local->table) {
-    e->next = ce;
-    local->table = e;
-    local->end_of_table->next = local->table;
-  } else if(ce == local->end_of_table) {
-    e->next = local->table;
-    local->end_of_table->next = e;
-    local->end_of_table = e;
-  } else {
-    e->next = ce;
-    last->next = e;
-  }
-
+  edge *e = g_slice_alloc0(sizeof(edge));
+  e->remote = remote;
+  g_sequence_insert_sorted(local->table, e,
+      (int (*)(gconstpointer, gconstpointer, gpointer)) edge_compare, NULL);
   return e;
 }
 
-int vertex_compare(struct vertex *v0, struct vertex *v1)
+edge *vertex_add_edge_by_index(GSequence *network, vertex *local, gint idx)
 {
-  return v_space_compare(v0->id, v1->id);
+  GSequenceIter *iter = g_sequence_get_iter_at_pos(network, idx);
+  return vertex_add_edge(local, g_sequence_get(iter));
 }
 
-int vertex_compare_by_identifier(struct vertex *v, v_space_t *id)
+/**
+ */
+void edge_free(edge *e)
 {
-  return v_space_compare(v->id, *id);
+  g_slice_free1(sizeof(edge), e);
 }
 
-inline v_space_t circle_left_idx(v_space_t network_size, v_space_t idx, v_space_t count)
+/**
+ * Returns the edge closest in space to the target.
+ * @param seq A sequence of edges.
+ * @param target The id to find.
+ */
+edge *edge_nearest(GSequence *seq, v_space_t target)
 {
-  if(idx < count) {
-    return network_size + idx - count;
+  GSequenceIter *idx0 = g_sequence_search(seq, NULL,
+      (int (*)(gconstpointer, gconstpointer, gpointer)) edge_compare,
+      &(target));
+  GSequenceIter *idx1;
+
+  if(g_sequence_iter_is_begin(idx0) == TRUE) {
+    idx1 = g_sequence_get_end_iter(seq);
+    if(idx0 == idx1) {
+      return NULL;
+    }
+    idx1 = g_sequence_iter_prev(idx1);
+  } else if(g_sequence_iter_is_end(idx0) == TRUE) {
+    idx0 = g_sequence_iter_prev(idx0);
+    idx1 = g_sequence_get_begin_iter(seq);
   } else {
-    return idx - count;
+    idx1 = g_sequence_iter_prev(idx0);
+  }
+
+  edge *e0 = g_sequence_get(idx0);
+  if(g_sequence_iter_is_end(idx1) == TRUE) {
+    return e0;
+  }
+  edge *e1 = g_sequence_get(idx1);
+
+  v_space_t dist0 = v_space_abs_dist(target, e0->remote->id);
+  v_space_t dist1 = v_space_abs_dist(target, e1->remote->id);
+  if(v_space_compare(dist0, dist1) < 0) {
+    return e0;
+  }
+  return e1;
+}
+
+/**
+ * Returns the vertex closest in space to the target.
+ * @param seq A sequence of vertex.
+ * @param target The id to find.
+ */
+vertex *vertex_nearest(GSequence *seq, v_space_t target)
+{
+  GSequenceIter *idx0 = g_sequence_search(seq, NULL,
+      (int (*)(gconstpointer, gconstpointer, gpointer)) vertex_compare,
+      &(target));
+  GSequenceIter *idx1;
+
+  if(g_sequence_iter_is_begin(idx0) == TRUE) {
+    idx1 = g_sequence_get_end_iter(seq);
+    if(idx0 == idx1) {
+      return NULL;
+    }
+    idx1 = g_sequence_iter_prev(idx1);
+  } else if(g_sequence_iter_is_end(idx0) == TRUE) {
+    idx0 = g_sequence_iter_prev(idx0);
+    idx1 = g_sequence_get_begin_iter(seq);
+  } else {
+    idx1 = g_sequence_iter_prev(idx0);
+  }
+
+  vertex *v0 = g_sequence_get(idx0);
+  if(g_sequence_iter_is_end(idx1) == TRUE) {
+    return v0;
+  }
+  vertex *v1 = g_sequence_get(idx1);
+
+  v_space_t dist0 = v_space_abs_dist(target, v0->id);
+  v_space_t dist1 = v_space_abs_dist(target, v1->id);
+  if(v_space_compare(dist0, dist1) < 0) {
+    return v0;
+  }
+  return v1;
+}
+
+/**
+ */
+int ec(const edge *e0, const edge *e1, v_space_t *other)
+{
+  if(e0 == NULL) {
+    return v_space_compare(*other, e1->remote->id);
+  } else if(e1 == NULL) {
+    return v_space_compare(e0->remote->id, *other);
+  } else {
+    return v_space_compare(e0->remote->id, e1->remote->id);
   }
 }
 
-inline v_space_t circle_right_idx(v_space_t network_size, v_space_t idx, v_space_t count)
+int edge_compare(const edge *e0, const edge *e1, v_space_t *other)
 {
-  return (idx + count) % network_size;
+  int rv = ec(e0, e1, other);
+  return rv;
 }
 
+/**
+ */
+int vertex_compare(const vertex *v0, const vertex *v1, v_space_t *other)
+{
+  if(v0 == NULL) {
+    return v_space_compare(*other, v1->id);
+  } else if(v1 == NULL) {
+    return v_space_compare(v0->id, *other);
+  } else {
+    return v_space_compare(v0->id, v1->id);
+  }
+}
+
+/**
+ */
 v_space_t v_space_abs_dist(v_space_t v0, v_space_t v1)
 {
   v_space_t near, around;
 
   if(v0 < v1) {
     near = v1 - v0;
-    around = (UINT_MAX - v1) + v0;
+    around = (V_SPACE_T_MAX - v1) + v0;
   } else if(v1 < v0) {
     near = v0 - v1;
-    around = (UINT_MAX - v0) + v1;
+    around = (V_SPACE_T_MAX - v0) + v1;
   } else {
     return 0;
   }
@@ -139,6 +217,8 @@ v_space_t v_space_abs_dist(v_space_t v0, v_space_t v1)
   return near < around ? near : around;
 }
 
+/**
+ */
 int v_space_compare(v_space_t v0, v_space_t v1)
 {
   if(v0 < v1) {
@@ -148,4 +228,30 @@ int v_space_compare(v_space_t v0, v_space_t v1)
   } else {
     return 0;
   }
+}
+
+/**
+ */
+inline v_space_t circle_left_idx(v_space_t network_size, v_space_t idx, v_space_t count)
+{
+  if(idx < count) {
+    return network_size + idx - count;
+  } else {
+    return idx - count;
+  }
+}
+
+/**
+ */
+inline v_space_t circle_right_idx(v_space_t network_size, v_space_t idx, v_space_t count)
+{
+  return (idx + count) % network_size;
+}
+
+v_space_t v_space_rand(GRand *grand)
+{
+  v_space_t lower = g_rand_int(grand);
+  return lower;
+//  v_space_t upper = ((v_space_t) g_rand_int(grand)) << 32;
+//  return upper | lower;
 }

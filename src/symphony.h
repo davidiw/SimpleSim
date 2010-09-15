@@ -9,8 +9,8 @@
 
 #ifndef SYMPHONY_H
 #define SYMPHONY_H
+#include <glib.h>
 #include "graph.h"
 
-void symphony_init(struct sorted_list *network);
-void symphony_add_vertex(struct vertex **network, struct vertex *vertex);
+void symphony_init(GSequence *network, GRand *rand, guint near, guint far);
 #endif
