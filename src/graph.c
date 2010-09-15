@@ -9,6 +9,8 @@
 
 #include "graph.h"
 
+/* network functions */
+
 GSequence *network_init()
 {
   return g_sequence_new((void (*)(gpointer)) vertex_free);
@@ -30,31 +32,8 @@ int network_add_vertex(GSequence *network, vertex *v)
       NULL);
 }
 
-/**
- */
-vertex *vertex_init(v_space_t id)
-{
-  vertex *v = g_slice_alloc0(sizeof(vertex));
-  v->id = id;
-  v->table = g_sequence_new((void (*)(gpointer)) edge_free);
-  vertex_add_edge(v, v);
-  return v;
-}
+/* vertex functions */
 
-/**
- */
-void vertex_free(vertex *v)
-{
-  if(v->table == NULL) {
-    perror("Vertex table already freed!");
-  } else {
-    g_sequence_free(v->table);
-  }
-  g_slice_free1(sizeof(vertex), v);
-}
-
-/**
- */
 edge *vertex_add_edge(vertex *local, vertex *remote)
 {
   GSequenceIter *iter = g_sequence_search(local->table, NULL,
@@ -81,57 +60,36 @@ edge *vertex_add_edge_by_index(GSequence *network, vertex *local, gint idx)
   return vertex_add_edge(local, g_sequence_get(iter));
 }
 
-/**
- */
-void edge_free(edge *e)
+int vertex_compare(const vertex *v0, const vertex *v1, v_space_t *other)
 {
-  g_slice_free1(sizeof(edge), e);
-}
-
-/**
- * Returns the edge closest in space to the target.
- * @param seq A sequence of edges.
- * @param target The id to find.
- */
-edge *edge_nearest(GSequence *seq, v_space_t target)
-{
-  GSequenceIter *idx0 = g_sequence_search(seq, NULL,
-      (int (*)(gconstpointer, gconstpointer, gpointer)) edge_compare,
-      &(target));
-  GSequenceIter *idx1;
-
-  if(g_sequence_iter_is_begin(idx0) == TRUE) {
-    idx1 = g_sequence_get_end_iter(seq);
-    if(idx0 == idx1) {
-      return NULL;
-    }
-    idx1 = g_sequence_iter_prev(idx1);
-  } else if(g_sequence_iter_is_end(idx0) == TRUE) {
-    idx0 = g_sequence_iter_prev(idx0);
-    idx1 = g_sequence_get_begin_iter(seq);
+  if(v0 == NULL) {
+    return v_space_compare(*other, v1->id);
+  } else if(v1 == NULL) {
+    return v_space_compare(v0->id, *other);
   } else {
-    idx1 = g_sequence_iter_prev(idx0);
+    return v_space_compare(v0->id, v1->id);
   }
-
-  edge *e0 = g_sequence_get(idx0);
-  if(g_sequence_iter_is_end(idx1) == TRUE) {
-    return e0;
-  }
-  edge *e1 = g_sequence_get(idx1);
-
-  v_space_t dist0 = v_space_abs_dist(target, e0->remote->id);
-  v_space_t dist1 = v_space_abs_dist(target, e1->remote->id);
-  if(v_space_compare(dist0, dist1) < 0) {
-    return e0;
-  }
-  return e1;
 }
 
-/**
- * Returns the vertex closest in space to the target.
- * @param seq A sequence of vertex.
- * @param target The id to find.
- */
+void vertex_free(vertex *v)
+{
+  if(v->table == NULL) {
+    perror("Vertex table already freed!");
+  } else {
+    g_sequence_free(v->table);
+  }
+  g_slice_free1(sizeof(vertex), v);
+}
+
+vertex *vertex_init(v_space_t id)
+{
+  vertex *v = g_slice_alloc0(sizeof(vertex));
+  v->id = id;
+  v->table = g_sequence_new((void (*)(gpointer)) edge_free);
+  vertex_add_edge(v, v);
+  return v;
+}
+
 vertex *vertex_nearest(GSequence *seq, v_space_t target)
 {
   GSequenceIter *idx0 = g_sequence_search(seq, NULL,
@@ -166,9 +124,9 @@ vertex *vertex_nearest(GSequence *seq, v_space_t target)
   return v1;
 }
 
-/**
- */
-int ec(const edge *e0, const edge *e1, v_space_t *other)
+/* edge functions */
+
+int edge_compare(const edge *e0, const edge *e1, v_space_t *other)
 {
   if(e0 == NULL) {
     return v_space_compare(*other, e1->remote->id);
@@ -179,27 +137,61 @@ int ec(const edge *e0, const edge *e1, v_space_t *other)
   }
 }
 
-int edge_compare(const edge *e0, const edge *e1, v_space_t *other)
+void edge_free(edge *e)
 {
-  int rv = ec(e0, e1, other);
-  return rv;
+  g_slice_free1(sizeof(edge), e);
 }
 
-/**
- */
-int vertex_compare(const vertex *v0, const vertex *v1, v_space_t *other)
+edge *edge_nearest(GSequence *seq, v_space_t target)
 {
-  if(v0 == NULL) {
-    return v_space_compare(*other, v1->id);
-  } else if(v1 == NULL) {
-    return v_space_compare(v0->id, *other);
+  GSequenceIter *idx0 = g_sequence_search(seq, NULL,
+      (int (*)(gconstpointer, gconstpointer, gpointer)) edge_compare,
+      &(target));
+  GSequenceIter *idx1;
+
+  if(g_sequence_iter_is_begin(idx0) == TRUE) {
+    idx1 = g_sequence_get_end_iter(seq);
+    if(idx0 == idx1) {
+      return NULL;
+    }
+    idx1 = g_sequence_iter_prev(idx1);
+  } else if(g_sequence_iter_is_end(idx0) == TRUE) {
+    idx0 = g_sequence_iter_prev(idx0);
+    idx1 = g_sequence_get_begin_iter(seq);
   } else {
-    return v_space_compare(v0->id, v1->id);
+    idx1 = g_sequence_iter_prev(idx0);
+  }
+
+  edge *e0 = g_sequence_get(idx0);
+  if(g_sequence_iter_is_end(idx1) == TRUE) {
+    return e0;
+  }
+  edge *e1 = g_sequence_get(idx1);
+
+  v_space_t dist0 = v_space_abs_dist(target, e0->remote->id);
+  v_space_t dist1 = v_space_abs_dist(target, e1->remote->id);
+  if(v_space_compare(dist0, dist1) < 0) {
+    return e0;
+  }
+  return e1;
+}
+
+/* v_space_t functions */
+
+v_space_t circle_left_idx(v_space_t network_size, v_space_t idx, v_space_t count)
+{
+  if(idx < count) {
+    return network_size + idx - count;
+  } else {
+    return idx - count;
   }
 }
 
-/**
- */
+v_space_t circle_right_idx(v_space_t network_size, v_space_t idx, v_space_t count)
+{
+  return (idx + count) % network_size;
+}
+
 v_space_t v_space_abs_dist(v_space_t v0, v_space_t v1)
 {
   v_space_t near, around;
@@ -217,8 +209,6 @@ v_space_t v_space_abs_dist(v_space_t v0, v_space_t v1)
   return near < around ? near : around;
 }
 
-/**
- */
 int v_space_compare(v_space_t v0, v_space_t v1)
 {
   if(v0 < v1) {
@@ -228,24 +218,6 @@ int v_space_compare(v_space_t v0, v_space_t v1)
   } else {
     return 0;
   }
-}
-
-/**
- */
-inline v_space_t circle_left_idx(v_space_t network_size, v_space_t idx, v_space_t count)
-{
-  if(idx < count) {
-    return network_size + idx - count;
-  } else {
-    return idx - count;
-  }
-}
-
-/**
- */
-inline v_space_t circle_right_idx(v_space_t network_size, v_space_t idx, v_space_t count)
-{
-  return (idx + count) % network_size;
 }
 
 v_space_t v_space_rand(GRand *grand)
