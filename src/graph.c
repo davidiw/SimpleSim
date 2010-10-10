@@ -124,6 +124,18 @@ vertex *vertex_nearest(GSequence *seq, v_space_t target)
   return v1;
 }
 
+vertex *vertex_next(GSequence *seq, v_space_t target)
+{
+  GSequenceIter *idx = g_sequence_search(seq, NULL,
+      (int (*)(gconstpointer, gconstpointer, gpointer)) vertex_compare,
+      &(target));
+
+  if(g_sequence_iter_is_end(idx) == TRUE) {
+    idx = g_sequence_iter_prev(idx);
+  }
+  return (vertex *) g_sequence_get(idx);
+}
+
 /* edge functions */
 
 int edge_compare(const edge *e0, const edge *e1, v_space_t *other)
@@ -174,6 +186,19 @@ edge *edge_nearest(GSequence *seq, v_space_t target)
     return e0;
   }
   return e1;
+}
+
+edge *edge_predecessor(GSequence *seq, v_space_t target)
+{
+  GSequenceIter *idx = g_sequence_search(seq, NULL,
+      (int (*)(gconstpointer, gconstpointer, gpointer)) edge_compare,
+      &(target));
+
+  if(g_sequence_iter_is_begin(idx) == TRUE) {
+    idx = g_sequence_get_end_iter(seq);
+  }
+  idx = g_sequence_iter_prev(idx);
+  return (edge *)  g_sequence_get(idx);
 }
 
 /* v_space_t functions */

@@ -11,32 +11,19 @@
 #include <glib/gprintf.h>
 #include "graph.h"
 #include "message.h"
+#include "chord.h"
 #include "symphony.h"
 
-/**
- * Implements traditional structured overlay greedy routing.
- * @param msg the message to transmit.
- * @param table the current hops routing table.
- */
-vertex *greedy_route(struct message *msg, GSequence *table)
+int route(struct message *msg, vertex *src, vertex *(*router)(struct message *, GSequence *))
 {
-  return edge_nearest(table, msg->dst)->remote;
-}
-
-void print(vertex *v, gpointer ud)
-{
-  g_printf("%lu\n", v->id);
-}
-
-int route(struct message *msg, vertex *src)
-{
-  vertex *next = greedy_route(msg, src->table);
+  vertex *next = router(msg, src->table);
   vertex *prev = src;
   int hops = 0;
   g_printf("Message:  src: %lu, dst: %lu\n", msg->src, msg->dst);
   while(next != prev) {
+    printf("%u %u\n", prev->id, next->id);
     prev = next;
-    next = greedy_route(msg, next->table);
+    next = router(msg, next->table);
     if(next == prev) {
       break;
     }
@@ -53,7 +40,7 @@ static gint seed = 0;
 static GOptionEntry entries[] =
 {
   { "network_size", 'n', 0, G_OPTION_ARG_INT, &network_size, "Network size", NULL },
-  { "network_type", 't', 0, G_OPTION_ARG_STRING, &network_type, "Network overlay type (symphony, chord, pastry)", NULL },
+  { "network_type", 't', 0, G_OPTION_ARG_STRING, &network_type, "Network overlay type (unidir_symphony, symphony, chord, pastry)", NULL },
   { "close_links", 'c', 0, G_OPTION_ARG_INT, &close_links, "Close links", NULL },
   { "far_links", 'f', 0, G_OPTION_ARG_INT, &far_links, "Far links", NULL },
   { "seed", 's', 0, G_OPTION_ARG_INT, &seed, "Random seed", NULL },
@@ -65,10 +52,9 @@ int main(int argc, char ** argv)
   GError *error = NULL;
   GOptionContext *context = g_option_context_new("- SimpleSim, P2P Structured Overlay Simulator");
   g_option_context_add_main_entries(context, entries, NULL);
-//  g_option_context_add_group(context, gtk_get_option_group(TRUE));
   if(!g_option_context_parse(context, &argc, &argv, &error)) {
     g_print("option parsing failed: %s\n", error->message);
-    exit(1);
+    return -1;
   }
 
   //g_mem_set_vtable(glib_mem_profiler_table);
@@ -82,7 +68,19 @@ int main(int argc, char ** argv)
   }
   g_printf("Done initializing vertexes!\n");
 
-  symphony_init(network, grand, close_links, far_links);
+  vertex *(*router)(struct message *, GSequence *) = NULL;
+  if(strcmp(network_type, "symphony") == 0) {
+    bidir_symphony_init(network, grand, close_links, far_links);
+    router = bidir_symphony_greedy_route;
+  } else if(strcmp(network_type, "unidir_symphony") == 0) {
+    unidir_symphony_init(network, grand, close_links, far_links);
+    router = unidir_symphony_greedy_route;
+  } else if(strcmp(network_type, "chord") == 0) {
+    chord_init(network);
+    router = chord_greedy_route;
+  } else {
+    g_printf("No such netowrk type: %s\n", network_type);
+  }
   g_printf("Done initializing edges!\n");
 
   int src_idx = network_size >> 8;
@@ -94,7 +92,7 @@ int main(int argc, char ** argv)
   vertex *dst = g_sequence_get(iter);
 
   struct message msg = { src->id, dst->id };
-  g_printf("Hops - %d\n", route(&msg, src));
+  g_printf("Hops - %d\n", route(&msg, src, router));
 
   g_printf("Done setting up network...\n");
   g_rand_free(grand);

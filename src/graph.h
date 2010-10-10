@@ -61,7 +61,14 @@ vertex *vertex_init(v_space_t id);
  * @param seq A sequence of vertex.
  * @param target The id to find.
  */
-vertex *vertex_nearest(GSequence *seq, v_space_t);
+vertex *vertex_nearest(GSequence *seq, v_space_t target);
+
+/**
+ * Returns the vertex immediately after the target.
+ * @param seq A sequence of vertex.
+ * @param target The id to find.
+ */
+vertex *vertex_next(GSequence *seq, v_space_t target);
 
 int edge_compare(const edge *e0, const edge *e1, v_space_t *other);
 void edge_free(edge *v);
@@ -71,6 +78,7 @@ void edge_free(edge *v);
  * @param target The id to find.
  */
 edge *edge_nearest(GSequence *seq, v_space_t);
+edge *edge_predecessor(GSequence *seq, v_space_t target);
 
 inline v_space_t circle_right_idx(v_space_t network_size, v_space_t idx, v_space_t count);
 inline v_space_t circle_left_idx(v_space_t network_size, v_space_t idx, v_space_t count);

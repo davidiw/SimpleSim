@@ -11,7 +11,7 @@
 #include <math.h>
 #include "symphony.h"
 
-void symphony_init(GSequence *network, GRand *rand, guint near, guint far)
+void symphony_init(GSequence *network, GRand *rand, guint near, guint far, gboolean unidir)
 {
   gint idx = 0, ns = g_sequence_get_length(network);
   gdouble log_ns = log2(ns), log_N = log2(V_SPACE_T_MAX);
@@ -33,8 +33,31 @@ void symphony_init(GSequence *network, GRand *rand, guint near, guint far)
 
       vertex *nv = vertex_nearest(network, rid);
       if(vertex_add_edge(cv, nv) != NULL) {
+        if(unidir == FALSE) {
+          vertex_add_edge(nv, cv);
+        }
         jdx++;
       }
     }
   }
+}
+
+void bidir_symphony_init(GSequence *network, GRand *rand, guint near, guint far)
+{
+  return symphony_init(network, rand, near, far, FALSE);
+}
+
+vertex *bidir_symphony_greedy_route(struct message *msg, GSequence *table)
+{
+  return edge_nearest(table, msg->dst)->remote;
+}
+
+void unidir_symphony_init(GSequence *network, GRand *rand, guint near, guint far)
+{
+  return symphony_init(network, rand, near, far, TRUE);
+}
+
+vertex *unidir_symphony_greedy_route(struct message *msg, GSequence *table)
+{
+  return edge_predecessor(table, msg->dst)->remote;
 }

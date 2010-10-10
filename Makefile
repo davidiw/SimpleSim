@@ -2,7 +2,7 @@ CC := gcc
 DEBUG := -g
 CFLAGS := -c $(DEBUG) $(shell pkg-config --cflags glib-2.0)
 LFLAGS := -lm $(DEBUG) $(shell pkg-config --libs glib-2.0)
-LIB_OBJS := src/graph.o src/symphony.o 
+LIB_OBJS := src/graph.o src/symphony.o src/chord.o
 BUILD_OBJS := $(LIB_OBJS) src/sim.o
 TEST_OBJS := $(LIB_OBJS) src/tests/tests.o src/tests/test_graph.o
 
