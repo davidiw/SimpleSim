@@ -149,6 +149,7 @@ void test_vertex_add_edge()
       g_assert(v1 == e->remote);
     }
   }
+  network_free(network);
 }
 
 /**
@@ -214,6 +215,7 @@ void test_vertex_nearest()
   help_vertex_nearest(network, 0, 499, -1, -2, 499);
   help_vertex_nearest(network, 0, 1, 1, -2, 0);
   help_vertex_nearest(network, 0, 1, 1, 2, 1);
+  network_free(network);
 }
 
 /**
@@ -284,6 +286,30 @@ void test_edge_nearest()
   help_edge_nearest(v->table, 0, 499, -1, -2, 499);
   help_edge_nearest(v->table, 0, 1, 1, -2, 0);
   help_edge_nearest(v->table, 0, 1, 1, 2, 1);
+  network_free(network);
+}
+
+/** Test vertex / edge removal */
+void test_vertex_removal()
+{
+  gint idx, size = 500;
+  GSequenceIter *current;
+  vertex *v;
+
+  GRand* grand = g_rand_new_with_seed(g_test_rand_int());
+  GSequence *network = generate_network(grand, size);
+
+  for(idx = 0; idx < size - 1; idx++) {
+    current = g_sequence_get_begin_iter(network);
+    v = g_sequence_get(current);
+    network_remove_vertex(network, v->id);
+  }
+
+  current = g_sequence_get_begin_iter(network);
+  v = g_sequence_get(current);
+  g_assert(g_sequence_get_length(network) == 1);
+  g_assert(g_sequence_get_length(v->table) == 1);
+  network_free(network);
 }
 
 void test_graph()
@@ -294,4 +320,5 @@ void test_graph()
   g_test_add_func("/graph/vertex_add_edge", test_vertex_add_edge);
   g_test_add_func("/graph/vertex_nearest", test_vertex_nearest);
   g_test_add_func("/graph/edge_nearest", test_edge_nearest);
+  g_test_add_func("/graph/vertex_removal", test_vertex_removal);
 }

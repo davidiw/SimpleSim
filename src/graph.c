@@ -32,6 +32,47 @@ int network_add_vertex(GSequence *network, vertex *v)
       NULL);
 }
 
+void network_remove_vertex(GSequence *network, v_space_t id)
+{
+  GSequenceIter *iter = g_sequence_search(network, NULL,
+      (int (*)(gconstpointer, gconstpointer, gpointer)) vertex_compare, &id);
+
+  if(g_sequence_iter_is_begin(iter) == TRUE) {
+    return;
+  }
+
+  iter = g_sequence_iter_prev(iter);
+  vertex *cv = g_sequence_get(iter);
+  if(cv->id != id) {
+    return;
+  }
+
+  GSequenceIter *iter0 = g_sequence_get_begin_iter(network);
+  while(g_sequence_iter_is_end(iter0) == FALSE) {
+    vertex *cv = g_sequence_get(iter0);
+    vertex_remove_edge(cv, id);
+    iter0 = g_sequence_iter_next(iter0);
+  }
+
+  g_sequence_remove(iter);
+}
+
+void vertex_remove_edge(vertex *v, v_space_t remote_id)
+{
+  GSequenceIter *iter = g_sequence_search(v->table, NULL, 
+      (int (*)(gconstpointer, gconstpointer, gpointer)) edge_compare, &remote_id);
+
+  if(g_sequence_iter_is_begin(iter) == TRUE) {
+    return;
+  }
+
+  iter = g_sequence_iter_prev(iter);
+  edge *ce = g_sequence_get(iter);
+  if(ce->remote->id == remote_id) {
+    g_sequence_remove(iter);
+  }
+}
+
 /* vertex functions */
 
 edge *vertex_add_edge(vertex *local, vertex *remote)

@@ -20,7 +20,7 @@ typedef guint32 v_space_t;
 #define V_SPACE_T_MAX G_MAXUINT32
 
 /** Represents a single point in the overlay.  */
-typedef struct _vertex {
+typedef struct {
   /** ID for the vertex */
   v_space_t id;
   /** Table of vertices from this node */
@@ -28,7 +28,7 @@ typedef struct _vertex {
 } vertex;
 
 /** Represents a connection to a remote vertex. */
-typedef struct _edge {
+typedef struct {
   /** The remote vertex. */
   vertex *remote;
 } edge;
@@ -36,6 +36,7 @@ typedef struct _edge {
 GSequence *network_init();
 void network_free(GSequence *network);
 int network_add_vertex(GSequence *network, vertex *v);
+void network_remove_vertex(GSequence *network, v_space_t id);
 
 /**
  * Creates a unidirectional edge from local to remote and stores it in the
@@ -48,6 +49,7 @@ edge *vertex_add_edge(vertex *local, vertex *remote);
 edge *vertex_add_edge_by_index(GSequence *network, vertex *local, gint idx);
 int vertex_compare(const vertex *v0, const vertex *v1, v_space_t *other);
 void vertex_free(vertex *v);
+void vertex_remove_edge(vertex *v, v_space_t edge_id);
 
 /**
  * Create a new vertex with the specified ID and a routing table with an entry
